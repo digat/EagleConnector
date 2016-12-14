@@ -4,6 +4,7 @@
  */
 package tp;
 
+import interfaces.ConnectionFeedBack;
 import classes.Reply;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;

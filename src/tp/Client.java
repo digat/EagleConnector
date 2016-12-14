@@ -5,6 +5,7 @@
  */
 package tp;
 
+import interfaces.ConnectionFeedBack;
 import classes.Reply;
 import classes.UniqueId;
 import com.google.common.collect.Maps;

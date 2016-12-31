@@ -27,6 +27,7 @@ import io.netty.handler.ssl.util.SelfSignedCertificate;
 import java.net.BindException;
 import java.security.cert.CertificateException;
 import java.util.Map;
+import javax.management.RuntimeErrorException;
 import javax.net.ssl.SSLException;
 import org.slf4j.LoggerFactory;
 /**
@@ -39,6 +40,9 @@ public class ObjectServer {
      private final int PORT;
      private static final boolean SSL = System.getProperty("ssl") != null;
      private final ClassLoader classLoader;
+     private EventLoopGroup bossGroup;
+     private EventLoopGroup workerGroup;
+     private ServerBootstrap server;
 
     public ObjectServer(int PORT, ClassLoader classLoader) {
         this.PORT = PORT;        
@@ -53,11 +57,11 @@ public class ObjectServer {
         } else {
             sslCtx = null;
         }
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        bossGroup = new NioEventLoopGroup(1);
+        workerGroup = new NioEventLoopGroup();
         try {
-            ServerBootstrap b = new ServerBootstrap();
-            b.group(bossGroup, workerGroup)
+            server = new ServerBootstrap();
+            server.group(bossGroup, workerGroup)
              .channel(NioServerSocketChannel.class)
              .handler(new LoggingHandler(LogLevel.INFO))
              .childHandler(new ChannelInitializer<SocketChannel>() {
@@ -78,18 +82,18 @@ public class ObjectServer {
 
             // Bind and start to accept incoming connections.
             ddsLogger.info("[WebSocketIOServer]\t "+"[DDS] Server listen to port "+PORT);
-            b.bind(PORT).sync().channel().closeFuture().sync();
-        }catch(Exception ex){
-            if(ex instanceof BindException){
-                throw new BindException("bind failed..");
-                //System.err.println("bind failed..");
-            }
-        } 
+            server.bind(PORT).sync().channel().closeFuture().sync();
+        }catch(InterruptedException ex){
+                throw new RuntimeException("bind failed..");
+       } 
         finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }
         
     }
-         
+    public void stop(){
+        bossGroup.shutdownGracefully();
+        workerGroup.shutdownGracefully();        
+    }     
 }

@@ -23,6 +23,9 @@ import io.netty.util.concurrent.Future;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import interfaces.ConnectionFeedBack;
+import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 /**
@@ -70,7 +73,7 @@ public class ObjectClientConnectionPool {
                                 throws Exception {
                             System.out.println("channelAcquired");
                         }
-                    }, ChannelHealthChecker.ACTIVE,FixedChannelPool.AcquireTimeoutAction.FAIL, 12000, // TODO make this configurable
+                    }, ChannelHealthChecker.ACTIVE,FixedChannelPool.AcquireTimeoutAction.FAIL, 6000, // TODO make this configurable
                     500, Integer.MAX_VALUE, true); 
 
         } finally {
@@ -83,6 +86,11 @@ public class ObjectClientConnectionPool {
         }
         Future<Channel> acquire = channelPool.acquire();
         CompletableFuture<Channel> client = new CompletableFuture<>();
+        try{
+            acquire = channelPool.acquire();
+        }catch(IllegalStateException ex){
+             client.completeExceptionally(ex);
+        }
 
         acquire.addListener((Future<Channel> future) -> {
             if (future.isSuccess()) {

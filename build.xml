@@ -10,6 +10,13 @@
 <project name="EagleConnector" default="default" basedir=".">
     <description>Builds, tests, and runs the project EagleConnector.</description>
     <import file="nbproject/build-impl.xml"/>
+    <!--target name="-post-jar">
+	<echo message="Packaging ${application.title} into a single JAR at ${application.title}-fat.jar"/>
+	<jar jarfile="dist/${application.title}-fat.jar">
+	    <zipfileset src="${dist.jar}" />
+	    <zipgroupfileset dir="dist/lib" includes="*.jar" excludes="META-INF/*"/>
+	</jar>
+    </target-->    
     <!--
 
     There exist several targets which are by default empty and which can be 

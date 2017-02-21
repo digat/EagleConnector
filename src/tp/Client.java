@@ -13,6 +13,8 @@ import com.nurkiewicz.asyncretry.AsyncRetryExecutor;
 import com.nurkiewicz.asyncretry.RetryExecutor;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -49,14 +51,14 @@ public class Client {
         group = new NioEventLoopGroup();
         bootstrap = new Bootstrap();     
         replies = Maps.newConcurrentMap();
-        scheduler = Executors.newScheduledThreadPool(2);
+        scheduler = Executors.newScheduledThreadPool(1);
         executor = new AsyncRetryExecutor(scheduler).
                     retryOn(Exception.class).
                     withExponentialBackoff(500, 2).     //500ms times 2 after each retry
                     withMaxDelay(20000).               //10 seconds
                     withUniformJitter().                //add between +/- 100 ms randomly
                     withMaxRetries(10);        
-        ini(this.connectionFeedBack);
+        ini(connectionFeedBack);
     }
     private void ini(ConnectionFeedBack connectionFeedBack){
         bootstrap.group(group)
@@ -67,20 +69,24 @@ public class Client {
         System.out.println("Try to Connect on : " +remotehost+":"+port );
         return bootstrap.connect(remotehost, port).sync().channel();
     }
-    public void tryToConnect(){
+    public CompletableFuture<Boolean> tryToConnect(){
+        CompletableFuture<Boolean> futureResult  =  new CompletableFuture();
         final CompletableFuture<Channel> tryTask = executor.getWithRetry(() ->{
            return connect(); 
         });
         tryTask.thenAccept(ch ->{
             channel = ch;
             System.out.println("Connected! " + ch.toString());
+            futureResult.complete(Boolean.TRUE);
         });        
         CompletableFuture<Channel> exceptionally = tryTask.exceptionally(throwable ->{
             channel = null;
             System.out.println("[Error] "+throwable.getMessage());
+            futureResult.complete(Boolean.FALSE);
             return null;
         });        
         //channel = exceptionally.get();
+        return futureResult;
     }
     public int send(String msg){
         String filter = msg.replace("\n", "").replace("\r", "");  
@@ -94,24 +100,32 @@ public class Client {
         String filter = msg.replace("\n", "").replace("\r", "");  
         final int id = uniqueId.getUniqueId();
         final Reply r = new Reply();
+        System.err.println(msg);
         replies.put(id, r);
         String m = filter.replaceAll(">\\s*<", "><");//encryption.encrypt(id+msg);//
-        channel.writeAndFlush( id+m + "\r\n");
-        CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
-            try {
-                r.waitForReply(timeout, tu);
-                System.out.println(r.getMessage());
-                return r.getMessage();
-            } catch (InterruptedException | TimeoutException ex) {
-                System.err.println("[Error] "+ex.getMessage());
-                throw new RuntimeException(ex.getCause());
+        System.out.println(channel.isOpen());
+        CompletableFuture.runAsync(()->{
+            if(!channel.isOpen()){
+                tryToConnect();
             }
-            
+            channel.writeAndFlush( id+m + "\r\n");
         });
-        final CompletableFuture<String> recovered = future.exceptionally(throwable ->{
-            return null;
-        });                
-        return future.join();
+        //CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+        try {
+            r.waitForReply(timeout, tu);
+            System.out.println(r.getMessage()+" "+msg);
+            return r.getMessage();
+            } catch (InterruptedException | TimeoutException ex) {
+            System.err.println("[Error] "+ex.getMessage());
+            throw new RuntimeException(ex.getCause());
+            }
+
+            //});
+            //final CompletableFuture<String> recovered = future.exceptionally(throwable ->{
+            //return null;
+        //});
+        //return future.join();
+                      
     }
     public void shutdown(){
         group.shutdownGracefully();

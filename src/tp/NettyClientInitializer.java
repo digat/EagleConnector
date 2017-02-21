@@ -40,7 +40,7 @@ public class NettyClientInitializer extends ChannelInitializer<SocketChannel>{
         //pipeline.addLast("inflater", ZlibCodecFactory.newZlibDecoder(ZlibWrapper.GZIP));
 
         pipeline.addLast("framer", new DelimiterBasedFrameDecoder(
-                ((1024*1024)*11), Delimiters.lineDelimiter()));
+                ((1024*1024)*10), Delimiters.lineDelimiter()));
 
 
         pipeline.addLast("decoder", new StringDecoder());

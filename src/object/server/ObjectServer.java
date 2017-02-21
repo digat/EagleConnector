@@ -5,7 +5,6 @@ package object.server;
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-import com.google.common.collect.Maps;
 import interfaces.ConnectionFeedBack;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;
@@ -26,16 +25,14 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
 import java.net.BindException;
 import java.security.cert.CertificateException;
-import java.util.Map;
-import javax.management.RuntimeErrorException;
 import javax.net.ssl.SSLException;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.LoggerFactory;
 /**
  *
  * @author Tareq
  */
 public class ObjectServer {
-    private static final org.slf4j.Logger ddsLogger = LoggerFactory.getLogger("dds");
+    //private static final org.slf4j.Logger ddsLogger = LoggerFactory.getLogger("dds");
     
      private final int PORT;
      private static final boolean SSL = System.getProperty("ssl") != null;
@@ -81,7 +78,7 @@ public class ObjectServer {
              });
 
             // Bind and start to accept incoming connections.
-            ddsLogger.info("[WebSocketIOServer]\t "+"[DDS] Server listen to port "+PORT);
+            System.out.println("[ObjectServer]\t "+"Server listen to port "+PORT);
             server.bind(PORT).sync().channel().closeFuture().sync();
         }catch(InterruptedException ex){
                 throw new RuntimeException("bind failed..");

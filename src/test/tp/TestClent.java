@@ -6,8 +6,6 @@
 package test.tp;
 
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import tp.Client;
 import interfaces.ConnectionFeedBack;
 
@@ -108,7 +106,7 @@ public class TestClent extends javax.swing.JFrame {
 
         jLabel3.setText("IP :");
 
-        tf_IP.setText("192.168.0.212");
+        tf_IP.setText("127.0.0.1");
         tf_IP.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 tf_IPActionPerformed(evt);
@@ -117,7 +115,7 @@ public class TestClent extends javax.swing.JFrame {
 
         jLabel4.setText("Port :");
 
-        tf_Port.setText("7789");
+        tf_Port.setText("7878");
 
         jToggleButton1.setText("Connect");
         jToggleButton1.addActionListener(new java.awt.event.ActionListener() {
@@ -243,7 +241,7 @@ public class TestClent extends javax.swing.JFrame {
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         long time = System.currentTimeMillis();
-        String response = tpClient.sendwithRply( ta_ReqMsg.getText(), 5000, TimeUnit.MILLISECONDS);
+        String response = tpClient.sendwithRply( ta_ReqMsg.getText(), 5, TimeUnit.SECONDS);
         time = System.currentTimeMillis()-time;
         lbl_time.setText("Time : "+time+" MS");
         ta_RespMsg.setText(response);

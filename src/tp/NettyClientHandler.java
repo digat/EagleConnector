@@ -9,6 +9,7 @@ import classes.Reply;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  *
@@ -28,10 +29,11 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<String> {
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext chc, String i) throws Exception {
+    protected void channelRead0(ChannelHandlerContext chc, final String i) throws Exception {
+        CompletableFuture.runAsync(()->{
         int id = getId(i, "<?");
         if(id >-1 ){
-            //System.out.println("[From serverX] : "+i);
+            System.out.println("[From serverX] : "+i);
             Reply r = replies.get(id);
             //if(!r.isReady()){
                 r.setMessage(getXml(i, "<?"));
@@ -40,19 +42,25 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<String> {
             //DataChangedHandler.fireDataChange(new DataChangeEvent(i, 0));
             //eventBus.post(r.getMessage());
         }
+        });
     }
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         //System.out.println("[Server] connection alive");
+        connectionFeedBack.connectionActive();
     }
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
         //System.out.println("[Server] connection added");
-        connectionFeedBack.connectionActive();
+        
     }
     @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+       connectionFeedBack.connectionClosed();
+    }    
+    @Override
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        connectionFeedBack.connectionClosed();
+       // connectionFeedBack.connectionClosed();
         //System.out.println("[Server] connection removed");
         //System.out.println("[Server] : "+ctx.channel().remoteAddress()+" has disconnect me.");
     }    

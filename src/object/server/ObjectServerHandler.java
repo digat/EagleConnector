@@ -8,16 +8,15 @@ import interfaces.ConnectionFeedBack;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import java.util.Arrays;
-import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 /**
  *
  * @author Tareq
  */
 public class ObjectServerHandler extends SimpleChannelInboundHandler<Object> {
     private static final String API_KEY = "1436779c1fac45f1b6779c1fac35f103";
-    private final Logger log = LoggerFactory.getLogger(getClass());
+    //private final Logger log = LoggerFactory.getLogger(getClass());
     private final ConnectionFeedBack connectionFeedBack;
     
     public ObjectServerHandler(ConnectionFeedBack connectionFeedBack) {
@@ -33,7 +32,7 @@ public class ObjectServerHandler extends SimpleChannelInboundHandler<Object> {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         //cause.printStackTrace();
-        log.error("[API/ObjectServerHandler] Error {}", Arrays.toString(cause.getStackTrace()));
+        //log.error("[API/ObjectServerHandler] Error {}", Arrays.toString(cause.getStackTrace()));
         ctx.close();
     }
 
@@ -51,7 +50,7 @@ public class ObjectServerHandler extends SimpleChannelInboundHandler<Object> {
         //    dataProcessingThread.start();
         //}
         //System.err.println(msg);
-        log.info("[API/ObjectServerHandler] INFO {}", msg);
+        //log.info("[API/ObjectServerHandler] INFO {}", msg);
         //EventManager.fireInMsgToAll(new InMsgEvent(msg));
          connectionFeedBack.connectionActive();
     }
@@ -59,7 +58,7 @@ public class ObjectServerHandler extends SimpleChannelInboundHandler<Object> {
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         String msg = "[client] : "+ctx.channel().remoteAddress()+" Connection Closed.";
         //System.err.println(msg);
-        log.info("[API/ObjectServerHandler] INFO {}", msg);
+        //log.info("[API/ObjectServerHandler] INFO {}", msg);
         //EventManager.fireInMsgToAll(new InMsgEvent(msg));
         connectionFeedBack.connectionClosed();
     }

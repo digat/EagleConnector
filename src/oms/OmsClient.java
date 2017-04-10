@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package tp;
+package oms;
 
 import classes.Reply;
 import classes.UniqueId;
@@ -13,29 +13,22 @@ import com.nurkiewicz.asyncretry.AsyncRetryExecutor;
 import com.nurkiewicz.asyncretry.RetryExecutor;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import static java.lang.Thread.sleep;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
  * @author Tareq
  */
-public class Client {
+public class OmsClient {
     private final String remotehost;
     private final int port; 
     private final EventLoopGroup group;
@@ -50,7 +43,7 @@ public class Client {
     private final ConnectionFeedBack connectionFeedBack;
     private final ExecutorService pool;
 
-    public Client(String remotehost, int port, ConnectionFeedBack connectionFeedBack) {
+    public OmsClient(String remotehost, int port, ConnectionFeedBack connectionFeedBack) {
         int processors = Runtime.getRuntime().availableProcessors();
         pool = Executors.newFixedThreadPool(processors);
         this.connectionFeedBack = connectionFeedBack;
@@ -72,7 +65,7 @@ public class Client {
     private void ini(ConnectionFeedBack connectionFeedBack){
         bootstrap.group(group)
             .channel(NioSocketChannel.class)
-            .handler(new NettyClientInitializer(replies, connectionFeedBack));   
+            .handler(new OmsClientInitializer(replies, connectionFeedBack));   
     }
     private Channel connect() throws InterruptedException{
         System.out.println("Try to Connect on : " +remotehost+":"+port );
@@ -106,77 +99,33 @@ public class Client {
         channel.writeAndFlush( id+m + "\r\n");
         return id;
     }
-    public CompletableFuture<Boolean> sendwithoutRply(final String msg, final int timeout, final TimeUnit tu){
+
+
+    public CompletableFuture<String> sendwithRply(final String msg){
         //CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
-            final CompletableFuture<Boolean> statefuture = new CompletableFuture<>();
+            CompletableFuture<String> result = new CompletableFuture<>();
             String filter = msg.replace("\n", "").replace("\r", "");  
             //final int id = uniqueId.getUniqueId();
             final String id = Generators.randomBasedGenerator().generate().toString();
             final Reply r = new Reply();
+            r.setResult(result);
             //System.err.println(msg);
             replies.put(id, r);
             String m = filter.replaceAll(">\\s*<", "><");//encryption.encrypt(id+msg);//
             m = m.replaceAll("(&(?!amp;))", "&amp;");
             m = m.trim();
+            if(channel==null){
+                tryToConnect().join();
+            }
             if(!channel.isOpen()){
                 tryToConnect();
             }
-            final String finalMsg = id+m + "\r\n";
-            channel.writeAndFlush( finalMsg).addListener((ChannelFutureListener) (ChannelFuture future) -> {
-                if (future.isSuccess()) {
-                    statefuture.complete(true);
-                }else{
-                    System.err.println("[Error][unable to send msg] "+finalMsg);
-                    statefuture.complete(false);
-                }                
-            });
-            return statefuture;
-           // return "";
+            channel.writeAndFlush( id+m + "\r\n");
+            //return result;
         //}, pool);
-        //return future.join();                   
-    }
-    public CompletableFuture<String> sendwithRplyInFuture(final String msg, final int timeout, final TimeUnit tu){
-           CompletableFuture<String> result = new CompletableFuture<>();
-            String filter = msg.replace("\n", "").replace("\r", "");  
-            //final int id = uniqueId.getUniqueId();
-            final String id = Generators.randomBasedGenerator().generate().toString();
-            final Reply r = new Reply();
-            r.setResult(result);
-            //System.err.println(msg);
-            replies.put(id, r);
-            String m = filter.replaceAll(">\\s*<", "><");//encryption.encrypt(id+msg);//
-            m = m.replaceAll("(&(?!amp;))", "&amp;");
-            m = m.trim();
-            if(channel==null){
-                tryToConnect().join();
-            }
-            if(!channel.isOpen()){
-                tryToConnect().join();
-            }
-            channel.writeAndFlush( id+m + "\r\n");
-        return result;
-    }
-    public CompletableFuture<String> sendwithRply(final String msg, final int timeout, final TimeUnit tu){
-        CompletableFuture<String> result = new CompletableFuture<>();
-        //CompletableFuture<String> future = new CompletableFuture<>();
-            String filter = msg.replace("\n", "").replace("\r", "");  
-            //final int id = uniqueId.getUniqueId();
-            final String id = Generators.randomBasedGenerator().generate().toString();
-            final Reply r = new Reply();
-            r.setResult(result);
-            //System.err.println(msg);
-            replies.put(id, r);
-            String m = filter.replaceAll(">\\s*<", "><");//encryption.encrypt(id+msg);//
-            m = m.replaceAll("(&(?!amp;))", "&amp;");
-            m = m.trim();
-            if(channel==null){
-                tryToConnect().join();
-            }
-            if(!channel.isOpen()){
-                tryToConnect();
-            }
-            channel.writeAndFlush( id+m + "\r\n");
+        
         return result;            
+        
     }
     public void shutdown(){
         group.shutdownGracefully();

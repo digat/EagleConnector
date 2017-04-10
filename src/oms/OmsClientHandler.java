@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package tp;
+package oms;
 
 import interfaces.ConnectionFeedBack;
 import classes.Reply;
@@ -15,13 +15,13 @@ import java.util.concurrent.CompletableFuture;
  *
  * @author Tareq
  */
-public class NettyClientHandler extends SimpleChannelInboundHandler<String> {
+public class OmsClientHandler extends SimpleChannelInboundHandler<String> {
     
     private final Map<String, Reply> replies;
     private final ConnectionFeedBack connectionFeedBack;
     //private final EventBus eventBus;
     
-    public NettyClientHandler(Map<String, Reply> replies, ConnectionFeedBack connectionFeedBack) {
+    public OmsClientHandler(Map<String, Reply> replies, ConnectionFeedBack connectionFeedBack) {
         super();
         this.replies = replies;
         this.connectionFeedBack = connectionFeedBack;
@@ -30,23 +30,13 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<String> {
 
     @Override
     protected void channelRead0(ChannelHandlerContext chc, final String i) throws Exception {
-        System.out.println("[From serverX] : "+i);
-        CompletableFuture.runAsync(()->{
-        
+        System.out.println("[From Oms] : "+i);
         String id = getId(i, "<?");
-        if(id!=null ){
-            
+        if(id!=null ){            
             Reply r = replies.get(id);
-            //if(!r.isReady()){
-                r.setMessage(getXml(i, "<?"));
-                r.getResult().complete(r.getMessage());
-                r.unlock();
-                //r.getResult().complete(getXml(i, "<?"));
-            //}            
-            //DataChangedHandler.fireDataChange(new DataChangeEvent(i, 0));
-            //eventBus.post(r.getMessage());
-        }
-        });
+            r.setMessage(getXml(i, "<?"));
+            r.getResult().complete(r.getMessage());
+        }        
     }
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {

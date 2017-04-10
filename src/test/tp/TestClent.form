@@ -137,7 +137,7 @@
         </Component>
         <Component class="javax.swing.JTextField" name="tf_IP">
           <Properties>
-            <Property name="text" type="java.lang.String" value="127.0.0.1"/>
+            <Property name="text" type="java.lang.String" value="178.20.184.101"/>
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="tf_IPActionPerformed"/>
@@ -150,7 +150,7 @@
         </Component>
         <Component class="javax.swing.JTextField" name="tf_Port">
           <Properties>
-            <Property name="text" type="java.lang.String" value="7878"/>
+            <Property name="text" type="java.lang.String" value="7789"/>
           </Properties>
         </Component>
         <Component class="javax.swing.JToggleButton" name="jToggleButton1">

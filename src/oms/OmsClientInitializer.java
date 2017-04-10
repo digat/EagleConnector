@@ -2,7 +2,8 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package tp;
+package oms;
+
 
 import interfaces.ConnectionFeedBack;
 import classes.Reply;
@@ -15,16 +16,18 @@ import io.netty.handler.codec.compression.ZlibWrapper;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import java.util.Map;
+import tp.MyJZLibDecoder;
+import tp.MyJZLibEncoder;
 
 /**
  *
  * @author Tareq
  */
-public class NettyClientInitializer extends ChannelInitializer<SocketChannel>{
+public class OmsClientInitializer extends ChannelInitializer<SocketChannel>{
      private final Map<String, Reply> replies;
      //private final EventBus eventBus;
     private final ConnectionFeedBack connectionFeedBack;
-    public NettyClientInitializer(Map<String, Reply> replies, ConnectionFeedBack connectionFeedBack) {
+    public OmsClientInitializer(Map<String, Reply> replies, ConnectionFeedBack connectionFeedBack) {
         super();
         this.replies = replies;
         this.connectionFeedBack = connectionFeedBack;
@@ -47,7 +50,7 @@ public class NettyClientInitializer extends ChannelInitializer<SocketChannel>{
         pipeline.addLast("encoder", new StringEncoder());
 
         // and then business logic.
-        pipeline.addLast("handler", new NettyClientHandler(replies, connectionFeedBack));        
+        pipeline.addLast("handler", new OmsClientHandler(replies, connectionFeedBack));        
     }
     
 }

@@ -30,7 +30,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<String> {
 
     @Override
     protected void channelRead0(ChannelHandlerContext chc, final String i) throws Exception {
-        System.out.println("[From serverX] : "+i);
+        //System.out.println("[From serverX] : "+i);
         CompletableFuture.runAsync(()->{
         
         String id = getId(i, "<?");
@@ -41,6 +41,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<String> {
                 r.setMessage(getXml(i, "<?"));
                 r.getResult().complete(r.getMessage());
                 r.unlock();
+            replies.remove(id);
                 //r.getResult().complete(getXml(i, "<?"));
             //}            
             //DataChangedHandler.fireDataChange(new DataChangeEvent(i, 0));

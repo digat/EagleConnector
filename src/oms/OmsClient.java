@@ -22,13 +22,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /**
  *
  * @author Tareq
  */
+@Deprecated
 public class OmsClient {
+    
     private final String remotehost;
     private final int port; 
     private final EventLoopGroup group;

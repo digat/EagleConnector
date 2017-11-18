@@ -3,14 +3,14 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package tp;
+package tp.com;
 
 import classes.Reply;
 import classes.UniqueId;
 import com.fasterxml.uuid.Generators;
-import interfaces.ConnectionFeedBack;
 import com.nurkiewicz.asyncretry.AsyncRetryExecutor;
 import com.nurkiewicz.asyncretry.RetryExecutor;
+import interfaces.ConnectionFeedBack;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -25,10 +25,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import tp.NettyClientInitializer;
 
 /**
  *
- * @author Tareq
+ * @author madfooatcom
  */
 public class Client {
     private final String remotehost;
@@ -44,7 +45,6 @@ public class Client {
     //private final int maxTryCount = 99;
     private final ConnectionFeedBack connectionFeedBack;
     private final ExecutorService pool;
-
     public Client(String remotehost, int port, ConnectionFeedBack connectionFeedBack) {
         int processors = Runtime.getRuntime().availableProcessors();
         pool = Executors.newFixedThreadPool(processors);
@@ -58,10 +58,10 @@ public class Client {
         scheduler = Executors.newScheduledThreadPool(1);
         executor = new AsyncRetryExecutor(scheduler).
                     retryOn(Exception.class).
-                    withExponentialBackoff(500, 1).     //500ms times 2 after each retry
-                    withMaxDelay(5000).               //10 seconds
+                    withExponentialBackoff(1000, 2).     //500ms times 2 after each retry
+                    withMaxDelay(10000).               //10 seconds
                     withUniformJitter().                //add between +/- 100 ms randomly
-                    withMaxRetries(100);  
+                    withMaxRetries(10);        
         ini(connectionFeedBack);
     }
     private void ini(ConnectionFeedBack connectionFeedBack){
@@ -200,5 +200,5 @@ public class Client {
         return replies;
     }
 
-}
+}    
 

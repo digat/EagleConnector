@@ -60,15 +60,17 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<String> {
         
     }
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-       connectionFeedBack.connectionClosed();
-    }    
-    @Override
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-       // connectionFeedBack.connectionClosed();
+        connectionFeedBack.connectionClosed();
         //System.out.println("[Server] connection removed");
         //System.out.println("[Server] : "+ctx.channel().remoteAddress()+" has disconnect me.");
+    }
+    
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+       //connectionFeedBack.connectionClosed();
     }    
+ 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         System.err.println("[Client][exceptionCaught] : "+ctx.channel().remoteAddress()+" Error : "+cause.getMessage());

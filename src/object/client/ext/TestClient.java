@@ -13,7 +13,7 @@ import oms.Message;
  */
 public class TestClient {
     public static void main(String[] args) throws InterruptedException {
-        ObjectClientConnectionPool ocp = new ObjectClientConnectionPool(500,"10.10.19.131", 7876, Message.class.getClassLoader());
+        ObjectClientConnectionPool ocp = new ObjectClientConnectionPool(1,"10.10.19.131", 7876, Message.class.getClassLoader());
         ocp.withMonitor();
         //ObjectClient oc = new ObjectClient("127.0.0.1", 7876, Message.class.getClassLoader());
         ocp.setup();

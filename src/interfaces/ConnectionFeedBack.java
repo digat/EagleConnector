@@ -15,6 +15,7 @@ public interface ConnectionFeedBack {
     default public void connectionException (Throwable cause){};
     public void connectionActive();
     public void connectionClosed();
+    default public void onTryToConnect(){};
     default public void onRecivedData(String message){};
     default public void onRecivedData(Object message, Channel channel){};
     default public void onRecivedError(Throwable cause){};

@@ -197,7 +197,7 @@ public class Client {
         final String id = Generators.randomBasedGenerator().generate().toString();
         final Reply r = new Reply();
         //System.err.println(msg);
-        replies.put(id, r);
+        //replies.put(id, r);
         String m = filter.replaceAll(">\\s*<", "><");//encryption.encrypt(id+msg);//
         m = m.replaceAll("(&(?!amp;))", "&amp;");
         m = m.trim();
@@ -206,7 +206,8 @@ public class Client {
             if (future.isSuccess()) {
                 statefuture.complete(true);
             } else {
-                System.err.println("[Error][unable to send msg] " + finalMsg);
+                
+                //System.err.println("[Error][unable to send msg] " + finalMsg);
                 statefuture.complete(false);
             }
         });

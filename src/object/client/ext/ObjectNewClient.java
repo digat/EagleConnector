@@ -3,109 +3,94 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package tp;
+package object.client.ext;
 
-import classes.Reply;
-import com.fasterxml.uuid.Generators;
 import interfaces.ConnectionFeedBack;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
+import io.netty.handler.codec.compression.ZlibCodecFactory;
+import io.netty.handler.codec.compression.ZlibWrapper;
+import io.netty.handler.codec.serialization.ClassResolvers;
+import io.netty.handler.codec.serialization.ObjectDecoder;
+import io.netty.handler.codec.serialization.ObjectEncoder;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import object.client.ext.ReConnectManager;
-import object.client.ext.States;
-import object.client.ext.TryConnectException;
+import oms.TestRequest;
 
 /**
  *
  * @author Tareq
  */
-public class Client {
+public class ObjectNewClient {
 
     private final String remotehost;
     private final int port;
     private final static EventLoopGroup GROUP = new NioEventLoopGroup();
     private final Bootstrap bootstrap;
     private final AtomicReference<Channel> channel = new AtomicReference<>(null);
-    private final Map<String, Reply> replies;
-    //private int tryCount = 0;
-    //private final int maxTryCount = 99;
     private final ConnectionFeedBack connectionFeedBack;
     private States.ConnectioState connectioState = States.ConnectioState.nil;
     private final ExecutorService EXECUTOR = Executors.newFixedThreadPool(1);
     private final AtomicBoolean reTryFlag = new AtomicBoolean(true);
-    private ReConnectManager<Client> reConnectManager;
-
-    public static class Monitor extends Thread {
-
-        private final BlockingQueue<States.ConnectioState> queue = new LinkedBlockingQueue();
-
-        public Monitor() {
-            super("Monitor Thraed");
-        }
-
-        @Override
-        public void run() {
-            while (!this.isInterrupted()) {
-                try {
-                    States.ConnectioState cs = queue.take();
-                    System.out.println("now it is : " + cs.name());
-                } catch (InterruptedException ex) {
-                    System.out.println("[Error] " + ex.getMessage());
-                }
-            }
-        }
-
-        public void state(States.ConnectioState connectioState) {
-            queue.add(connectioState);
-        }
-    }
+    private ReConnectManager<ObjectNewClient> reConnectManager;
+    private final ClassLoader classLoader;
 
     public void stopRetry() {
         reTryFlag.set(false);
     }
 
-    public Client(String remotehost, int port, ConnectionFeedBack connectionFeedBack) {
-        //int processors = Runtime.getRuntime().availableProcessors();
-        //pool = Executors.newFixedThreadPool(processors);
+    public ObjectNewClient(String remotehost, int port, ClassLoader classLoader, ConnectionFeedBack connectionFeedBack) {
+        this.classLoader = classLoader;
         this.connectionFeedBack = connectionFeedBack;
-        //uniqueId = new UniqueId();
         this.remotehost = remotehost;
         this.port = port;
 
         bootstrap = new Bootstrap();
         bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000);
-        replies = new ConcurrentHashMap();
-        //ini();
+
     }
 
-    private void init(ConnectionFeedBack cfb) {
+    private void init() {
         bootstrap.group(GROUP)
                 .channel(NioSocketChannel.class)
-                .handler(new NettyClientInitializer(replies, cfb));
+                .handler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    protected void initChannel(SocketChannel ch) throws Exception {
+                        ChannelPipeline pipeline = ch.pipeline();
+                        pipeline.addLast("idleStateHandler", new IdleStateHandler(40, 20, 0));
+                        pipeline.addLast("DuplexHandler", new DuplexHandler());
+                        pipeline.addLast("deflater", ZlibCodecFactory.newZlibEncoder(ZlibWrapper.GZIP));
+                        pipeline.addLast("inflater", ZlibCodecFactory.newZlibDecoder(ZlibWrapper.GZIP));
+                        pipeline.addLast("encoder", new ObjectEncoder());
+                        pipeline.addLast("decoder", new ObjectDecoder(ClassResolvers.cacheDisabled(classLoader)));
+                        pipeline.addLast("handler", new ObjectClientHandler(connectionFeedBack));
+                    }
+                });
+    
     }
 
     public void setConnectioState(States.ConnectioState connectioState) {
         this.connectioState = connectioState;
     }
     public void setup() {
-        //monitor.start();
-        ConnectionFeedBack cfb = setupConnectionFeedBack();        
-        init(cfb);
+        init();
         reConnectManager = new ReConnectManager(this, 5000L);
     }    
 
@@ -189,73 +174,8 @@ public class Client {
         return connectioState;
     }
 
-    public String send(String msg) {
-        String filter = msg.replace("\n", "").replace("\r", "");
-        //final int id = uniqueId.getUniqueId();
-        final String id = Generators.randomBasedGenerator().generate().toString();
-        replies.put(id, new Reply());
-        String m = filter.replaceAll(">\\s*<", "><");//encryption.encrypt(id+msg);//
-        channel.get().writeAndFlush(id + m + "\r\n");
-        return id;
-    }
 
-    public CompletableFuture<Boolean> sendwithoutRply(final String msg, final int timeout, final TimeUnit tu) {
-        //CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
-        final CompletableFuture<Boolean> statefuture = new CompletableFuture<>();
-        String filter = msg.replace("\n", "").replace("\r", "");
-        //final int id = uniqueId.getUniqueId();
-        final String id = Generators.randomBasedGenerator().generate().toString();
-        final Reply r = new Reply();
-        //System.err.println(msg);
-        //replies.put(id, r);
-        String m = filter.replaceAll(">\\s*<", "><");//encryption.encrypt(id+msg);//
-        m = m.replaceAll("(&(?!amp;))", "&amp;");
-        m = m.trim();
-        final String finalMsg = id + m + "\r\n";
-        channel.get().writeAndFlush(finalMsg).addListener((ChannelFutureListener) (ChannelFuture future) -> {
-            if (future.isSuccess()) {
-                statefuture.complete(true);
-            } else {
-                
-                //System.err.println("[Error][unable to send msg] " + finalMsg);
-                statefuture.complete(false);
-            }
-        });
-        return statefuture;
-    }
 
-    public CompletableFuture<String> sendwithRplyInFuture(final String msg, final int timeout, final TimeUnit tu) {
-        CompletableFuture<String> result = new CompletableFuture<>();
-        String filter = msg.replace("\n", "").replace("\r", "");
-        //final int id = uniqueId.getUniqueId();
-        final String id = Generators.randomBasedGenerator().generate().toString();
-        final Reply r = new Reply();
-        r.setResult(result);
-        //System.err.println(msg);
-        replies.put(id, r);
-        String m = filter.replaceAll(">\\s*<", "><");//encryption.encrypt(id+msg);//
-        m = m.replaceAll("(&(?!amp;))", "&amp;");
-        m = m.trim();
-        channel.get().writeAndFlush(id + m + "\r\n");
-        return result;
-    }
-
-    public CompletableFuture<String> sendwithRply(final String msg, final int timeout, final TimeUnit tu) {
-        CompletableFuture<String> result = new CompletableFuture<>();
-        //CompletableFuture<String> future = new CompletableFuture<>();
-        String filter = msg.replace("\n", "").replace("\r", "");
-        //final int id = uniqueId.getUniqueId();
-        final String id = Generators.randomBasedGenerator().generate().toString();
-        final Reply r = new Reply();
-        r.setResult(result);
-        //System.err.println(msg);
-        replies.put(id, r);
-        String m = filter.replaceAll(">\\s*<", "><");//encryption.encrypt(id+msg);//
-        m = m.replaceAll("(&(?!amp;))", "&amp;");
-        m = m.trim();
-        channel.get().writeAndFlush(id + m + "\r\n");
-        return result;
-    }
 
     public void shutdown() {
         reConnectManager.cancel();
@@ -283,8 +203,20 @@ public class Client {
         return channel.get();
     }
 
-    public Map<String, Reply> getReplies() {
-        return replies;
+    public class DuplexHandler extends ChannelDuplexHandler {
+
+        @Override
+        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+            if (evt instanceof IdleStateEvent) {
+                IdleStateEvent e = (IdleStateEvent) evt;
+                if (e.state() == IdleState.READER_IDLE) {
+                    //ctx.close();
+                } else if (e.state() == IdleState.WRITER_IDLE) {
+                    //System.out.println("[Ping] [userEventTriggered]");
+                    ctx.writeAndFlush(new TestRequest("p"));
+                }
+            }
+        }
     }
 
 }

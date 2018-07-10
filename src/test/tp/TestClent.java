@@ -21,6 +21,7 @@ public class TestClent extends javax.swing.JFrame {
     public TestClent() {
         initComponents();
         tpClient = new Client(tf_IP.getText(), Integer.parseInt(tf_Port.getText()), setupConnectionListener());
+        tpClient.setup();
     }
     private ConnectionFeedBack setupConnectionListener(){
         ConnectionFeedBack connectionFeedBack = new ConnectionFeedBack(){
@@ -251,10 +252,11 @@ public class TestClent extends javax.swing.JFrame {
     }//GEN-LAST:event_tf_IPActionPerformed
 
     private void jToggleButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButton1ActionPerformed
-        tpClient.tryToConnect();
+        tpClient.start();
     }//GEN-LAST:event_jToggleButton1ActionPerformed
 
     private void jToggleButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButton2ActionPerformed
+        tpClient.shutdown();
     }//GEN-LAST:event_jToggleButton2ActionPerformed
 
     /**

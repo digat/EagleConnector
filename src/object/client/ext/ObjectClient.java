@@ -32,17 +32,20 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import object.client.ext.States.ConnectioState;
 import oms.AcknowledgeReport;
 import oms.TestRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  * @author madfooatcom
  */
 public class ObjectClient {
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(ObjectClient.class);
     public static class Monitor extends Thread {
 
         private final BlockingQueue<ConnectioState> queue = new LinkedBlockingQueue();
@@ -80,7 +83,11 @@ public class ObjectClient {
     private final ClassLoader classLoader;
     private final ConcurrentArrayList<Connection> listeners = new ConcurrentArrayList<>();
     private final int id;
-    private final static ExecutorService EXECUTOR = Executors.newFixedThreadPool(10);
+    private final static ExecutorService EXECUTOR = Executors.newFixedThreadPool(1);
+    private ReConnectManager<ObjectClient> reConnectManager;
+    private final AtomicBoolean reTryFlag = new AtomicBoolean(true);
+    private ConnectionFeedBack listenConnectionFeedBack;
+
 
     public ObjectClient(int id, String remotehost, int port, ClassLoader classLoader) {
         this.id = id;
@@ -89,7 +96,7 @@ public class ObjectClient {
         this.classLoader = classLoader;
         //GROUP = new NioEventLoopGroup();
         bootstrap = new Bootstrap();
-        bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000);
+        bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 6000);
         // At client side option is tcpNoDelay and at server child.tcpNoDelay
         //monitor= new Monitor ();
 
@@ -99,6 +106,7 @@ public class ObjectClient {
         //monitor.start();
         setupConnectionFeedBack();
         init(classLoader);
+        reConnectManager = new ReConnectManager(this, 5000L);
     }
 
     public void addConnectioStateListener(Connection connection) {
@@ -114,43 +122,41 @@ public class ObjectClient {
             cons.setState(connectioState);
         });
     }
+    public void start(){
+        reConnectManager.resume();
+    }
 
-    public void start() {
+    protected void connectMe() {
         CompletableFuture<Channel> future = CompletableFuture.supplyAsync(() -> {
             return connect();
         }, EXECUTOR).whenComplete((result, ex) -> {
             if (result != null) {
                 channel.set(result);
-                //System.out.println(result);
-                //result.writeAndFlush(new TestRequest("ping"));
             } else {
                 channel.set(null);
-                //System.out.println("[Error] " + ex.getMessage());
             }
         });
+        future.join();
     }
 
     private Channel connect() {
-        //System.out.println("[connectioState] " + connectioState.name());
-        //System.out.println("Try to Connect on : " + remotehost + ":" + port);
-        CompletableFuture<Channel> futureResult = new CompletableFuture<>();
-        //try {
-
-        ChannelFuture future = bootstrap.connect(remotehost, port);
-        future.addListener((ChannelFutureListener) (ChannelFuture future1) -> {
-            if (future1.isSuccess()) {
-                futureResult.complete(future1.channel());
-            } else {
-                futureResult.completeExceptionally(new TryConnectException(remotehost, port));
-            }
-        });
-        future.awaitUninterruptibly();
-
-        //futureResult.complete(bootstrap.connect(remotehost, port).sync().channel());
-        //} catch (InterruptedException ex) {
-        //    futureResult.completeExceptionally(new TryConnectException(remotehost, port));
-        //}
-        return futureResult.join();
+        try {
+            //System.out.println("[connectioState] " + connectioState.name());
+            //System.out.println("Try to Connect on : " + remotehost + ":" + port);
+            CompletableFuture<Channel> futureResult = new CompletableFuture<>();
+            ChannelFuture future = bootstrap.connect(remotehost, port);
+            future.addListener((ChannelFutureListener) (ChannelFuture future1) -> {
+                if (future1.isSuccess()) {
+                    futureResult.complete(future1.channel());
+                } else {
+                    futureResult.completeExceptionally(new TryConnectException(remotehost, port));
+                }
+            });
+            future.awaitUninterruptibly();
+            return futureResult.join();
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     public ConnectioState getConnectioState() {
@@ -170,35 +176,67 @@ public class ObjectClient {
             public void connectionActive() {
                 //LOGGER.info("[ExeuteFeedBackService] connectionActive");
                 setConnectioState(ConnectioState.connected);
+                reConnectManager.setConnected(true);
+                if(listenConnectionFeedBack!=null){
+                    listenConnectionFeedBack.connectionActive();
+                }
             }
 
             @Override
             public void connectionClosed() {
-                //LOGGER.info("[ExeuteFeedBackService] connectionClosed");
+                LOGGER.info("[connectionClosed] connectionClosed");
                 setConnectioState(ConnectioState.disconected);
-                start();
+                reConnectManager.setConnected(false);
+                if (reTryFlag.get()) {
+                    connectionFeedBack.onTryToConnect();
+                }                    
+                if(listenConnectionFeedBack!=null){
+                    listenConnectionFeedBack.connectionClosed();
+                }
+                //start();
             }
 
             @Override
             public void connectionException(Throwable cause) {
                 setConnectioState(ConnectioState.disconected);
+                LOGGER.error("[connectionException] onRecivedError {}", cause);
+                if(listenConnectionFeedBack!=null){
+                    listenConnectionFeedBack.connectionException(cause);
+                }
             }
+            
 
             @Override
             public void onRecivedError(Throwable cause) {
-                //LOGGER.error("[ExeuteFeedBackService] onRecivedError {}", cause);
+                LOGGER.error("[onRecivedError] onRecivedError {}", cause);
+               if(listenConnectionFeedBack!=null){
+                    listenConnectionFeedBack.onRecivedError(cause);
+                }                
             }
 
             @Override
             public void onRecivedData(Object message, Channel channel) {
                 if (message instanceof AcknowledgeReport) {
-                    AcknowledgeReport ack = (AcknowledgeReport) message;
+                    //AcknowledgeReport ack = (AcknowledgeReport) message;
                     //LOGGER.info("[AcknowledgeReport] "+ack.getMsgKey());
                 }
+               if(listenConnectionFeedBack!=null){
+                    listenConnectionFeedBack.onRecivedData(message, channel);
+                }                  
             }
         };
 
     }
+
+    public void setListenConnectionFeedBack(ConnectionFeedBack listenConnectionFeedBack) {
+        this.listenConnectionFeedBack = listenConnectionFeedBack;
+        reConnectManager.setListenConnectionFeedBack(this.listenConnectionFeedBack);
+    }
+
+    public ConnectionFeedBack getListenConnectionFeedBack() {
+        return listenConnectionFeedBack;
+    }
+    
 
     private void init(ClassLoader classLoader) {
         bootstrap.group(GROUP)
@@ -246,5 +284,7 @@ public class ObjectClient {
     public int getId() {
         return id;
     }
-
+    public void stopRetry() {
+        reTryFlag.set(false);
+    }
 }

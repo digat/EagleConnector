@@ -43,6 +43,7 @@ public class OmsClient {
     //private final int maxTryCount = 99;
     private final ConnectionFeedBack connectionFeedBack;
     private final ExecutorService pool;
+    
 
     public OmsClient(String remotehost, int port, ConnectionFeedBack connectionFeedBack) {
         int processors = Runtime.getRuntime().availableProcessors();

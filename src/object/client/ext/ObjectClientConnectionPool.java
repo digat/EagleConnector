@@ -6,15 +6,13 @@
 package object.client.ext;
 
 import com.google.common.collect.Maps;
-import java.util.List;
+import java.util.Date;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 import object.client.ext.States.ConnectioState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,7 +57,7 @@ public class ObjectClientConnectionPool {
         sb.append("active=").append(active).append(", ");
         sb.append("free=").append(free).append(", ");
         sb.append("notReady=").append(notReady).append(", ");
-        sb.append("connected=").append(connected).append(", ");
+        sb.append("connected=").append(connected).append("} ").append( new Date());
         freeItems.set(free.intValue());
         return sb.toString();
     }
@@ -69,7 +67,7 @@ public class ObjectClientConnectionPool {
             LOGGER.info("Statistics: " + poolStatistics());
             //System.err.println("Statistics: " + poolStatistics());
         };
-        executor.scheduleWithFixedDelay(task, 0, 5, TimeUnit.SECONDS);
+        executor.scheduleWithFixedDelay(task, 0, 10, TimeUnit.SECONDS);
     }
 
     public void setup() {
@@ -85,10 +83,20 @@ public class ObjectClientConnectionPool {
         oc.setup();
         oc.start();
         PoolItem pi = new PoolItem(id, oc);
-        //pi.setItemState(States.ItemState.free);
+        pi.setItemState(States.ItemState.free);
         return pi;
     }
-
+    public PoolItem getPoolItem() {
+        Random rn = new Random();
+        int randomNum =  rn.nextInt(pool.size());
+        PoolItem item = pool.get(randomNum);
+        if(item!=null){
+            return item;
+        }else{
+            return getPoolItem();
+        }
+    }
+    /*
     public PoolItem acquire() {
         List<Entry<Integer, PoolItem>> list = pool.entrySet().stream().filter(item -> item.getValue().getItemState() == States.ItemState.free
                 && item.getValue().getObjectClient().getConnectioState() == ConnectioState.connected)
@@ -132,5 +140,6 @@ public class ObjectClientConnectionPool {
     public int getUsedItemsCount() {
         return usedItems.get();
     }
+    */
 
 }

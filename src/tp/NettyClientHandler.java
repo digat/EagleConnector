@@ -10,6 +10,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -19,6 +21,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<String> {
     
     private final Map<String, Reply> replies;
     private final ConnectionFeedBack connectionFeedBack;
+    private static final Logger LOGGER = LoggerFactory.getLogger(NettyClientHandler.class);
     //private final EventBus eventBus;
     
     public NettyClientHandler(Map<String, Reply> replies, ConnectionFeedBack connectionFeedBack) {
@@ -73,7 +76,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<String> {
  
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        System.err.println("[Client][exceptionCaught] : "+ctx.channel().remoteAddress()+" Error : "+cause.getMessage());
+        LOGGER.error("[Client][exceptionCaught] : "+ctx.channel().remoteAddress()+" Error : "+cause.getMessage());
         connectionFeedBack.connectionException(cause);
         ctx.close();
     }    

@@ -15,7 +15,7 @@ import object.client.ext.States.ItemState;
 public class PoolItem implements Comparable<PoolItem> {
 
     private final int id;
-    private AtomicReference<ItemState> itemState;
+    private final AtomicReference<ItemState> itemState;
     private final ObjectClient objectClient;
 
     public PoolItem(int id, ObjectClient objectClient) {
